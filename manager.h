@@ -3,16 +3,6 @@
 #include <stdlib.h>
 #include <time.h>
 
-//DEFINISIKAN VARIABEL GLOBAL DISINI
-int limit  = 3;
-
-//DEFINISIKAN STRUCT DISINI
-struct users{
-    char nickname[300];
-    char username[300];
-    char password[300];
-};
-
 struct Presensi {
     char username[50];
     char nama[50];
@@ -22,21 +12,22 @@ struct Presensi {
 //DEFINISIKAN FUNGSI MANAGER
 void login_manager();
 void menu_manager();
-void rekap_presensi();
 void rekap_penjualan();
-int cekAbsensiHariIni(FILE *file, struct Presensi *presensi);
-void catatPresensi(FILE *file, struct Presensi *presensi);
-void lihatPresensi(FILE *file);
+void rekap_presensi();
+
 void waktu();
 FILE *presensi;
 
+/*
 //VOID UTAMA
 void main(){
     system("cls");
     waktu();
     login_manager(limit);
 }
+*/
 
+/*
 //DEFINISIKAN FUNGSI SPESIFIK DARI ADMIN DISINI
 void waktu(){
     struct Presensi presensi;
@@ -45,7 +36,51 @@ void waktu(){
 
     snprintf(presensi.tanggal, sizeof(presensi.tanggal), "%02d/%02d/%04d %02d:%02d:%02d",tm.tm_mday, tm.tm_mon + 1, tm.tm_year + 1900,tm.tm_hour, tm.tm_min, tm.tm_sec);
 }
+*/
 
+void login_manager(int limit){
+    system("cls");
+    printf("================================ LOGIN MANAGER ================================\n");
+    struct users check;
+    struct users input;
+
+    int ada;
+
+    FILE *data_manager; 
+    data_manager = fopen("data_manager.dat", "rb");
+
+    printf("Masukkan username : "); gets(input.username);
+    printf("Masukkan password : "); gets(input.password);
+
+    ada = 0;
+    while(fread(&check, sizeof(check), 1, data_manager) != 0){
+        if(strcmp(check.username, input.username) == 0 && strcmp(input.password, check.password) == 0){
+            strcpy(input.nickname, check.nickname);
+            ada = 1;
+            break;
+        }else{
+            ada = 0;
+        }
+    }
+
+    fclose(data_manager);
+
+    if(ada){
+        menu_manager(input.nickname);
+    }else{
+       if(limit > 1){
+            system("cls");
+            printf("Password atau username salah!\nKesempatan login tersisa %d lagi\n", limit-1);
+            login_manager(limit-1);
+       }else{
+            printf("Maaf, kesempatan login habis\nTekan apapun untuk kembali ke menu utama\n");
+            getchar();
+            pilih_role();
+       }
+    }
+}
+
+/*
 void login_manager(int limit){
     struct users input;
     printf("Masukkan username : "); gets(input.username);
@@ -62,11 +97,14 @@ void login_manager(int limit){
         }
     }
 }
+*/
 
-void menu_manager(){
+void menu_manager(char nickname[]){
     system("cls");
+    printf("================================ MENU MANAGER ================================\n");
     int pilih;
-    printf("Menu tersedia manager :\n1. Rekap Presensi\n2. Rekap penjualan\n3. Keluar");
+    printf("Selamat datang, %s!\n", nickname);
+    printf("Menu tersedia manager :\n1. Rekap penjualan\n2. Rekap presensi\n3. Keluar dari akun\n4. Keluar dari aplikasi\n");
 
     do{
         printf("\nSilahkan pilih : ");
@@ -74,12 +112,15 @@ void menu_manager(){
 
         switch(pilih){
             case 1 :
-            lihatPresensi(presensi);
+            rekap_penjualan(nickname);
             break;
             case 2 :
-            rekap_penjualan();
+            rekap_presensi(nickname);
             break;
-            case 3:
+            case 3 :
+            pilih_role();
+            break;
+            case 4 :
             exit(0);
             break;
             default : 
@@ -88,6 +129,7 @@ void menu_manager(){
     }while(pilih <= 0 || pilih > 2);
 }
 
+/*
 int cekAbsensiHariIni(FILE *file, struct Presensi *presensi) {
     fseek(file, 0, SEEK_SET);
     struct Presensi temp;
@@ -127,16 +169,60 @@ void lihatPresensi(FILE *file) {
     system("pause");
     menu_manager();
 }
+*/
 
-void rekap_penjualan(){
+void rekap_penjualan(char nickname[]){
     system("cls");
+    printf("================================ REKAP PENJUALAN ================================\n");
     FILE *rekap_penjualan;
-    rekap_penjualan = fopen("RekapPenjualan.dat", "rb"); 
-    
+    rekap_penjualan = fopen("laporan_penjualan.dat", "rb"); 
+    int a  = 0;
     if (rekap_penjualan == NULL) {
         printf("TIDAK ADA PENJUALAN.\n");
-        system("pause");
-        menu_manager();
+        getchar();
+        menu_manager(nickname);
         return;
+    }else{
+        //printf("No |\tTanggal\t|\tNama barang\t|\tJumlah\t|\tHarga\n");
+        while(fread(&barang, sizeof(barang), 1, rekap_penjualan) == 1){
+            printf("Barang ke : %d\n", a+=1);
+            printf("Tanggal pembelian : %02d - %02d - %02d\n", barang.tanggal_masuk.hari, barang.tanggal_masuk.bulan, barang.tanggal_masuk.tahun);
+            printf("Waktu pembelian   : %02d : %02d : %d\n", barang.waktu_masuk.jam, barang.waktu_masuk.menit, barang.waktu_masuk.detik);
+            printf("Nama              : %s\n", barang.nama);
+            printf("Jumlah pembelian  : %d\n", barang.stok);
+            printf("Harga barang      : %d\n", barang.harga);
+            printf("\n");
+        }
+        fclose(rekap_penjualan);
     }
+    printf("Tekan apapun untuk kembali ke menu utama...\n");
+    getchar();
+    menu_manager(nickname);
+}
+
+void rekap_presensi(char nickname[]){
+    system("cls");
+    printf("================================ REKAP PRESENSI ================================\n");
+    struct users baca_user;
+    FILE *presensi = fopen("presensi.dat", "rb");
+    if(presensi == NULL){
+        printf("Rekapan presensi belum ada\n");
+    }else{
+        int a = 0;
+        printf(" NO |\tNICKNAME\t|\tROLE\t|\tTANGGAL\t|\tWAKTU\n");
+        while(fread(&baca_user, sizeof(baca_user), 1, presensi) == 1){
+            printf(" %d  |\t%s\t          | %s\t    | %02d-%02d-%d\t | %02d:%02d:%02d\n", a+=1, baca_user.nickname, baca_user.peran, baca_user.presensi.hari, baca_user.presensi.bulan, baca_user.presensi.tahun, baca_user.login.jam, baca_user.login.menit, baca_user.login.detik);
+            //printf(" %d  |\t%s\t          | %s\t    | %02d-%02d-%d\t | %02d:%02d:%02d\n", a+=1, baca_user.nickname, baca_user.peran, baca_user.presensi.hari, baca_user.presensi.bulan, baca_user.presensi.tahun, baca_user.login.jam, baca_user.login.menit, baca_user.login.detik);
+            /*printf("Data ke        : %d\n", a+=1);
+            printf("Nickname       : %s\n", baca_user.nickname);
+            printf("Role           : %s\n", baca_user.peran);
+            printf("Tanggal        : %02d-%02d-%d\n",baca_user.presensi.hari, baca_user.presensi.bulan, baca_user.presensi.tahun);
+            printf("Waktu presensi : %02d:%02d:%02d\n",baca_user.login.jam, baca_user.login.menit, baca_user.login.detik);
+            */
+            //printf("\n");
+        }
+    }
+    printf("Tekan tombol apapun untuk kembali ke menu utama...\n");
+    getchar();
+    menu_manager(nickname);
 }
